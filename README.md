@@ -18,8 +18,10 @@ Usage: quiz.exe <quizfile>
 
 * [tasksched.cpp](task/tasksched.cpp): Task list and scheduler.
 ```
-Usage: tasksched.exe <tasklistfile>
+Usage: tasksched.exe [--run] <tasklistfile>
 
 Parameters:
+    -r, --run       Optional parameter. When set, schedule the list of tasks.
+                    Otherwise, enumerate the list of tasks without scheduling.
     tasklistfile    Text file enumerating the list of tasks.
 ```

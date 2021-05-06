@@ -14,9 +14,11 @@
  * - G++:   g++ tasksched.cpp -o tasksched.exe
  * - MSVC:  cl /EHsc tasksched.cpp /Fe:tasksched.exe
  *
- * Usage: tasksched.exe <tasklistfile>
+ * Usage: tasksched.exe [--run] <tasklistfile>
  *
  * Parameters:
+ *     -r, --run       Optional parameter. When set, schedule the list of tasks.
+ *                     Otherwise, enumerate the list of tasks without scheduling.
  *     tasklistfile    Text file enumerating the list of tasks.
  *
  * A "task list file" could represent for example a daily schedule
@@ -52,6 +54,9 @@
  * - Overloading comparison and injection operators.
  */
 
+/* "--run": Enable to support task scheduling (requires C++11). */
+#define TASK_RUN_SCHEDULE
+
 /* TEST MODE: Enable to compile and run this program in test mode. */
 // #define TEST_MODE
 
@@ -76,12 +81,18 @@
 #endif
 #endif
 //----
+#ifdef TASK_RUN_SCHEDULE
+#include <thread>       // For std::this_thread::sleep_until()
+#include <chrono>       // For std::chrono::system_clock
+#endif
+//----
 #include <iostream>     // For IO streams.
 #include <fstream>      // For file streams.
 //----
 #include <queue>        // For std::queue<>
 #include <algorithm>    // For std::sort()
 //----
+#include <cstring>      // For strcmp()
 #include <string>       // For std::string
 #include <sstream>      // For string streams.
 //----
@@ -296,33 +307,99 @@ Usage(const std::string& exePath)
 #endif
     exeName = exeName.substr(pos != std::string::npos ? pos + 1 : 0);
 
-    cout << "Usage: " << exeName << " <tasklistfile>\n\n"
+    cout << "Usage: " << exeName <<
+#ifdef TASK_RUN_SCHEDULE
+            " [--run]"
+#endif
+            " <tasklistfile>\n\n"
          << "Parameters:\n"
+#ifdef TASK_RUN_SCHEDULE
+            "    -r, --run       Optional parameter. When set, schedule the list of tasks.\n"
+            "                    Otherwise, enumerate the list of tasks without scheduling.\n"
+#endif
             "    tasklistfile    Text file enumerating the list of tasks." << endl;
 }
 #endif
 
 int main(int argc, char** argv)
 {
+#ifdef TASK_RUN_SCHEDULE
+    bool bRun = false; // Default: don't run the tasks, just list them.
+#endif
+
 #ifdef TEST_MODE
 
     std::istringstream inFile(testSchedule);
 
 #else
 
-    /* Stop now if we don't have any file */
+    /*
+     * Check for options.
+     */
+    int i;
+    for (i = 1; i < argc; ++i)
+    {
+        if (
+#ifdef _WIN32
+// On Win32, support also the usual '/' switch.
+            (*argv[i] != '/') &&
+#endif
+            (*argv[i] != '-'))
+        {
+            /* We are out of options (they come first before
+             * anything else, and cannot come after). */
+            break;
+        }
+        /* Short form ("-x") or long form ("--xxx") option? */
+        bool bLongOpt =
+#ifdef _WIN32
+// Long option must always start with dash '-', so do this check on Win32.
+            (argv[i][0] == '-') &&
+#endif
+            (argv[i][1] == '-');
+
+        /* Help */
+        if ((!bLongOpt && (strcmp(&argv[i][1], "?") == 0)) ||
+            ( bLongOpt && (strcmp(&argv[i][2], "help") == 0)))
+        {
+            /* Set argc to special case value */
+            argc = 0;
+            break;
+        }
+#ifdef TASK_RUN_SCHEDULE
+        else
+        /* Run the tasks */
+        if ((!bLongOpt && (strcmp(&argv[i][1], "r") == 0)) ||
+            ( bLongOpt && (strcmp(&argv[i][2], "run") == 0)))
+        {
+            bRun = true;
+        }
+#endif
+        else
+        /* Unknown option */
+        {
+            cerr << "Unknown option: '" << argv[i] << "'\n" << endl;
+            /* Set argc to special case value */
+            argc = 0;
+            break;
+        }
+    }
+    /* Check for no arguments / help / invalid syntax */
     if (argc <= 1)
     {
         Usage(argv[0]);
         return -1;
     }
+    /* Stop now if we don't have any file */
+    if (i >= argc)
+        return 0;
 
     /* Try to open the task list file for input */
     std::ifstream inFile;
-    inFile.open(argv[1], std::ios::in);
+    inFile.open(argv[i], std::ios::in);
     if (!inFile.is_open())
     {
-        cerr << "Could not open task list file '" << argv[1] << "'" << endl;
+        cerr << "Could not open task list file '" << argv[i] << "'" << endl;
         return -1;
     }
 
@@ -424,6 +501,9 @@ int main(int argc, char** argv)
     /* Print the header */
     cout << "==== Tasks for Today, "
          << std::put_time(localtime(&t_today), "%A %x")
+#ifdef TASK_RUN_SCHEDULE
+         << (bRun ? " [Run mode]" : "")
+#endif
          << " ====\n" << endl;
 
     /* Save whether we originally had tasks to do (used for later) */
@@ -449,9 +529,37 @@ int main(int argc, char** argv)
         cout << "Scheduled tasks:\n----------------\n" << endl;
         while (!tasks[TIMED_TASKS].empty())
         {
-            /* Retrieve the next task and pop it */
-            cout << tasks[TIMED_TASKS].front() << endl;
+            /* Do the next task and pop it */
+#ifdef TASK_RUN_SCHEDULE
+            if (bRun)
+            {
+                cout << "Currently doing:\n"
+                        "  --> " << tasks[TIMED_TASKS].front() << endl;
+            }
+            else
+#endif
+            {
+                cout << tasks[TIMED_TASKS].front() << endl;
+            }
             tasks[TIMED_TASKS].pop();
+
+#ifdef TASK_RUN_SCHEDULE
+            if (bRun)
+            {
+                /* If the list is now empty, just quit */
+                if (tasks[TIMED_TASKS].empty())
+                    break;
+
+                /* Otherwise, show what the next task will be... */
+                CTask& task = tasks[TIMED_TASKS].front();
+                cout << "The next task will be:\n"
+                        "    [ " << task << " ]\n" << endl;
+
+                /* and wait until the next task begins. */
+                using std::chrono::system_clock;
+                std::this_thread::sleep_until(system_clock::from_time_t(task.time()));
+            }
+#endif
         }
         cout << endl;
     }
