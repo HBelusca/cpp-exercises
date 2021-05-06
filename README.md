@@ -10,3 +10,8 @@ The exercises can be compiled with `g++` (GCC/G++) or with `cl` (MSVC),
 with support for C++11 or later.
 
 ## List
+
+* [quiz.cpp](quiz/quiz.cpp): Quiz application.
+```
+Usage: quiz.exe <quizfile>
+```

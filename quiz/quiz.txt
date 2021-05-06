@@ -1,0 +1,18 @@
+
+What is the smallest country?
+3
+USA
+India
+Vatican City
+
+What's the biggest animal in the world?
+2
+Elephant
+Blue whale
+Great white shark
+
+How many (currently discovered) elements are there in the periodic table?
+1
+118
+119
+120
