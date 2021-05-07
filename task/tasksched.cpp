@@ -65,6 +65,7 @@ int main(int argc, char** argv)
     std::queue<std::string> tasks;
     while (true)
     {
+        size_t pos;
         std::string line;
 
         /* Try to read an entire line representing a task */
@@ -73,6 +74,14 @@ int main(int argc, char** argv)
         /* Stop now if we reached the end of the file */
         if (inFile.eof())
             break;
+
+        constexpr const char* WHITESPACE = " \t\f\v\n\r";
+
+        /* Trim leading and trailing whitespace */
+        pos = line.find_first_not_of(WHITESPACE);
+        line = line.substr(pos != std::string::npos ? pos : line.length());
+        pos = line.find_last_not_of(WHITESPACE);
+        line = line.substr(0, pos != std::string::npos ? pos + 1 : 0);
 
         /* If the line is empty, skip this entry */
         if (line.empty())
