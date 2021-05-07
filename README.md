@@ -15,3 +15,11 @@ with support for C++11 or later.
 ```
 Usage: quiz.exe <quizfile>
 ```
+
+* [tasksched.cpp](task/tasksched.cpp): Task list and scheduler.
+```
+Usage: tasksched.exe <tasklistfile>
+
+Parameters:
+    tasklistfile    Text file enumerating the list of tasks.
+```
