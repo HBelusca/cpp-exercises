@@ -29,10 +29,36 @@
  * - STL queues: https://youtu.be/jaK4pn1jXTo
  */
 
+/* TEST MODE: Enable to compile and run this program in test mode. */
+// #define TEST_MODE
+
+
 #include <iostream>     // For IO streams.
 #include <fstream>      // For file streams.
 #include <queue>        // For std::queue<>
 #include <string>       // For std::string
+#ifdef TEST_MODE
+#include <sstream>      // For string streams.
+#endif
+
+
+#ifdef TEST_MODE
+const std::string testSchedule =
+"  \t  00:00  \t  Midnight  \t  \n" // Leading/trailing whitespace (-> trim)
+"\n\n"                      // Extra newlines (-> ignore)
+"   \t    \n"               // Only whitespace (-> ignore)
+"6:00  \t  Wake up\n"
+"7:00    Breakfast\n"
+"7:30    Go to work\n"
+"\n\n\n"                    // Extra newlines (-> ignore)
+"8:00    Do work stuff\n"
+"12:00   Lunch break\n"
+"13:00   Back to work stuff\n"
+"14:30   Meeting\n"
+"16:00   Music lesson\n"
+"\n\n";
+#endif
+
 
 // using std::cin;
 using std::cout;
@@ -41,6 +67,12 @@ using std::endl;
 
 int main(int argc, char** argv)
 {
+#ifdef TEST_MODE
+
+    std::istringstream inFile(testSchedule);
+
+#else
+
     /* Stop now if we don't have any file */
     if (argc <= 1)
     {
@@ -58,6 +90,8 @@ int main(int argc, char** argv)
         cerr << "Could not open task list file '" << argv[1] << "'" << endl;
         return -1;
     }
+
+#endif
 
     /*
      * Parse the tasks from the file.
@@ -91,8 +125,10 @@ int main(int argc, char** argv)
         tasks.push(line);
     }
 
+#ifndef TEST_MODE
     /* We are done with the task file */
     inFile.close();
+#endif
 
     /* Print the header */
     cout << "==== Tasks for Today ====\n" << endl;
