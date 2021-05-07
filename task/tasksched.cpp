@@ -86,6 +86,7 @@
 #include <chrono>       // For std::chrono::system_clock
 #endif
 //----
+#include <io.h>         // For _isatty()
 #include <iostream>     // For IO streams.
 #include <fstream>      // For file streams.
 //----
@@ -288,7 +289,7 @@ void sort(std::queue<T>& queue)
 }
 
 
-// using std::cin;
+using std::cin;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -329,7 +330,10 @@ int main(int argc, char** argv)
 
 #ifdef TEST_MODE
 
-    std::istringstream inFile(testSchedule);
+    /* TEST MODE streams */
+    std::istringstream strStream(testSchedule);
+    std::ostream*   org_tiestr_cin = cin.tie(nullptr);
+    std::streambuf* org_strbuf_cin = cin.rdbuf(strStream.rdbuf());
 
 #else
 
@@ -384,23 +388,48 @@ int main(int argc, char** argv)
             break;
         }
     }
-    /* Check for no arguments / help / invalid syntax */
-    if (argc <= 1)
+    /* Check for help / invalid syntax */
+    if (argc == 0)
     {
         Usage(argv[0]);
         return -1;
     }
-    /* Stop now if we don't have any file */
-    if (i >= argc)
-        return 0;
 
-    /* Try to open the task list file for input */
-    std::ifstream inFile;
-    inFile.open(argv[i], std::ios::in);
-    if (!inFile.is_open())
+
+    /*
+     * Check for a file or STDIN redirection.
+     */
+    std::ifstream inFile; // File stream, if any.
+    std::ostream*   org_tiestr_cin = nullptr; // Original std::cin tied ostream.
+    std::streambuf* org_strbuf_cin = nullptr; // Original std::cin stream buffer.
+
+    if ((argc <= 1) || (i >= argc))
     {
-        cerr << "Could not open task list file '" << argv[i] << "'" << endl;
-        return -1;
+        if (_isatty(_fileno(stdin)))
+        {
+            /* STDIN not redirected: we expected a file but didn't get one.
+             * Display usage and bail out. */
+            Usage(argv[0]);
+            return ((argc <= 1) ? -1 : 0); // Use a different return code.
+        }
+        else
+        {
+            /* STDIN redirected: use it */
+        }
+    }
+    else
+    {
+        /* Try to open the task list file for input */
+        inFile.open(argv[i], std::ios::in);
+        if (!inFile.is_open())
+        {
+            cerr << "Could not open task list file '" << argv[i] << "'" << endl;
+            return -1;
+        }
+
+        /* Redirect std::cin to the file */
+        org_tiestr_cin = cin.tie(nullptr);
+        org_strbuf_cin = cin.rdbuf(inFile.rdbuf());
     }
 
 #endif
@@ -415,7 +444,7 @@ int main(int argc, char** argv)
     t_today = mktime(&tm_today);
 
     /*
-     * Parse the tasks from the file.
+     * Parse the tasks from the input stream.
      */
     enum
     {
@@ -431,10 +460,10 @@ int main(int argc, char** argv)
         std::string timestr, description;
 
         /* Try to read an entire line representing a task */
-        std::getline(inFile, line);
+        std::getline(cin, line);
 
-        /* Stop now if we reached the end of the file */
-        if (inFile.eof())
+        /* Stop now if we reached the end of the stream */
+        if (cin.eof())
             break;
 
         /*
@@ -490,9 +519,16 @@ int main(int argc, char** argv)
     }
 
 #ifndef TEST_MODE
-    /* We are done with the task file */
-    inFile.close();
+    /* If we had a task file, close it */
+    if (inFile.is_open())
+        inFile.close();
 #endif
+    /* Restore any original std::cin stream */
+    if (org_strbuf_cin)
+        cin.rdbuf(org_strbuf_cin);
+    if (org_tiestr_cin)
+        cin.tie(org_tiestr_cin);
+
 
     /* Sort the timed task queue in "ascending" order */
     sort(tasks[TIMED_TASKS]);
