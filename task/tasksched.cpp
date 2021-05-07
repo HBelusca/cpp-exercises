@@ -33,6 +33,10 @@
 // #define TEST_MODE
 
 
+#define _CRT_SECURE_NO_WARNINGS
+#include <ctime>        // For C++ time_t wrappers around "time.h".
+#include <iomanip>      // Used here for time parsing routines.
+//----
 #include <iostream>     // For IO streams.
 #include <fstream>      // For file streams.
 #include <queue>        // For std::queue<>
@@ -65,6 +69,26 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+#ifndef TEST_MODE
+static void
+Usage(const std::string& exePath)
+{
+    /* Extract the file name only (after the last path separator) */
+    size_t pos;
+    std::string exeName(exePath);
+#ifdef _WIN32 // Win32 supports both backward and forward slashes.
+    pos = exeName.find_last_of("\\/");
+#else // Other platforms: most likely just forward slash.
+    pos = exeName.rfind('/');
+#endif
+    exeName = exeName.substr(pos != std::string::npos ? pos + 1 : 0);
+
+    cout << "Usage: " << exeName << " <tasklistfile>\n\n"
+         << "Parameters:\n"
+            "    tasklistfile    Text file enumerating the list of tasks." << endl;
+}
+#endif
+
 int main(int argc, char** argv)
 {
 #ifdef TEST_MODE
@@ -76,9 +100,7 @@ int main(int argc, char** argv)
     /* Stop now if we don't have any file */
     if (argc <= 1)
     {
-        cout << "Usage: " << argv[0] << " <tasklistfile>\n\n"
-             << "Parameters:\n"
-                "    tasklistfile    Text file enumerating the list of tasks." << endl;
+        Usage(argv[0]);
         return -1;
     }
 
@@ -92,6 +114,12 @@ int main(int argc, char** argv)
     }
 
 #endif
+
+    /* Set the current user's locale (for nicely displaying dates...) */
+    cout.imbue(std::locale(""));
+
+    /* Time support */
+    time_t t_today = time(nullptr);
 
     /*
      * Parse the tasks from the file.
@@ -131,7 +159,9 @@ int main(int argc, char** argv)
 #endif
 
     /* Print the header */
-    cout << "==== Tasks for Today ====\n" << endl;
+    cout << "==== Tasks for Today, "
+         << std::put_time(localtime(&t_today), "%A %x")
+         << " ====\n" << endl;
 
     /* Save whether we originally had tasks to do (used for later) */
     bool bHadTasks = !tasks.empty();
