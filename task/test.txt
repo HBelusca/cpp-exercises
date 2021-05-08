@@ -1,17 +1,22 @@
 
 
   	  00:00  	  Midnight  	  
+Generic_Task0
 
    	    
 6:00  	  Wake up
+6:30
+    Generic Task 1
 7:00    Breakfast
+7:00    Bath
 7:30    Go to work
 
 
 
 8:00    Do work stuff
-12:00   Lunch break
-13:00   Back to work stuff
 14:30   Meeting
+12:00   Lunch break
+    Generic Task 2
 16:00   Music lesson
+13:00   Back to work stuff
 
