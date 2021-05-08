@@ -14,12 +14,20 @@
  * - G++:   g++ tasksched.cpp -o tasksched.exe
  * - MSVC:  cl /EHsc tasksched.cpp /Fe:tasksched.exe
  *
- * Usage: tasksched.exe [--run] <tasklistfile>
+ * Usage:
+ *     tasksched.exe [--run] tasklistfile
+ *     command-name | tasksched.exe [--run]
+ *     tasksched.exe [--run] < tasklistfile
+ *
+ *     command-name    Specifies a command whose output is formatted similarly
+ *                     to a task list file, and whose tasks will be scheduled.
  *
  * Parameters:
  *     -r, --run       Optional parameter. When set, schedule the list of tasks.
  *                     Otherwise, enumerate the list of tasks without scheduling.
- *     tasklistfile    Text file enumerating the list of tasks.
+ *
+ *     tasklistfile    Text file enumerating the list of tasks. It can either be
+ *                     passed as an option, or be redirected to the STDIN.
  *
  * A "task list file" could represent for example a daily schedule
  * (more practical when this schedule does not change much).
@@ -86,6 +94,8 @@
 #include <chrono>       // For std::chrono::system_clock
 #endif
 //----
+// #include <locale.h>     // For setlocale().
+// #include <clocale>      // For std::locale
 #include <io.h>         // For _isatty()
 #include <iostream>     // For IO streams.
 #include <fstream>      // For file streams.
@@ -308,17 +318,49 @@ Usage(const std::string& exePath)
 #endif
     exeName = exeName.substr(pos != std::string::npos ? pos + 1 : 0);
 
-    cout << "Usage: " << exeName <<
+    cout << "Simple Task Scheduler v1.0\n"
+            "Copyright 2021 Hermès Bélusca-Maïto\n"
+            "Under GPL-2.0+ license (https://spdx.org/licenses/GPL-2.0+)\n"
+            "\n"
+            "Usage:\n"
+         << "    " << exeName <<
 #ifdef TASK_RUN_SCHEDULE
             " [--run]"
 #endif
-            " <tasklistfile>\n\n"
+            " tasklistfile\n"
+         << "    command-name | " << exeName <<
+#ifdef TASK_RUN_SCHEDULE
+            " [--run]"
+#endif
+            "\n"
+         << "    " << exeName <<
+#ifdef TASK_RUN_SCHEDULE
+            " [--run]"
+#endif
+            " < tasklistfile\n"
+            "\n"
+            "    command-name    Specifies a command whose output is formatted similarly\n"
+            "                    to a task list file, and whose tasks will be scheduled.\n"
+            "\n"
          << "Parameters:\n"
 #ifdef TASK_RUN_SCHEDULE
             "    -r, --run       Optional parameter. When set, schedule the list of tasks.\n"
             "                    Otherwise, enumerate the list of tasks without scheduling.\n"
+            "\n"
 #endif
-            "    tasklistfile    Text file enumerating the list of tasks." << endl;
+            "    tasklistfile    Text file enumerating the list of tasks. It can either be\n"
+            "                    passed as an option, or be redirected to the STDIN.\n"
+            "\n"
+            "    -?, --help      Displays this help message.\n"
+            "\n"
+            "Each line in the task list file describes a single task, and has\n"
+            "the following format:\n"
+            "    time <whitespace> Task_description\n"
+            "where:\n"
+            "- 'time' is in hour:minutes (HH:MM) format. This is optional.\n"
+            "- 'Task_description' is a one-line string describing the task.\n"
+            "Whitespace is trimmed around the task description.\n"
+         << endl;
 }
 #endif
 
@@ -327,6 +369,18 @@ int main(int argc, char** argv)
 #ifdef TASK_RUN_SCHEDULE
     bool bRun = false; // Default: don't run the tasks, just list them.
 #endif
+
+    /*
+     * Enable correct console locale, by setting the current user's locale.
+     * See the following links for more information:
+     * https://stackoverflow.com/a/44225070/13530036
+     * https://stackoverflow.com/a/25696480/13530036
+     * https://stdcxx.apache.org/doc/stdlibug/24-3.html
+     */
+    setlocale(LC_ALL, ""); // For C and C++ when synced with stdio.
+    std::locale::global(std::locale("")); // For C++.
+    // cout.imbue(std::locale(""));
+    cout.imbue(std::locale());
 
 #ifdef TEST_MODE
 
@@ -433,9 +487,6 @@ int main(int argc, char** argv)
     }
 
 #endif
-
-    /* Set the current user's locale (for nicely displaying dates...) */
-    cout.imbue(std::locale(""));
 
     /* Time support */
     time_t t_today = time(nullptr);
